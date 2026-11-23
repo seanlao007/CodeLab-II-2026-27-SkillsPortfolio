@@ -25,3 +25,61 @@ scene_images = {}  # stores PhotoImages so Python's garbage collector doesn't bl
 
 SCENE_W = 540
 SCENE_H = 290
+
+
+def load_scene(filename):
+    path = os.path.join(scenes_dir, filename)
+    if os.path.exists(path):
+        # resize every image to match the canvas so proportions stay tidy
+        img = Image.open(path).resize((SCENE_W, SCENE_H), Image.Resampling.LANCZOS)
+        return ImageTk.PhotoImage(img)
+    return None
+
+
+def draw_scene(scene_key):
+    photo = scene_images.get(scene_key)
+    scene_canvas.delete("all")  # wipe old canvas items before drawing the new scene
+    if photo:
+        scene_canvas.create_image(0, 0, anchor="nw", image=photo)
+        scene_canvas.image = photo  # extra reference on the canvas for safety
+    # put the choice buttons back on top since delete("all") clears canvas windows too
+    scene_canvas.create_window(125, 255, window=choice1_btn)
+    scene_canvas.create_window(295, 255, window=choice2_btn)
+
+
+def show_intro():
+    global state
+    state = "intro"
+    draw_scene("intro")
+    dialogue_label.config(text="Hi.. ! Im Matthew")
+    punchline_label.config(text="")
+    choice1_btn.config(text="hey there...")
+    choice2_btn.config(text="oh wsp...")
+
+
+def go_to_ask():
+    global state
+    state = "ask"
+    draw_scene("ask")
+    dialogue_label.config(text="Wanna hear a joke .... ?")
+    punchline_label.config(text="")
+    choice1_btn.config(text="ew..! no!")
+    choice2_btn.config(text="yes matthew!")
+
+
+def tell_next_joke():
+    global current_joke, state
+    if jokes:
+        current_joke = random.choice(jokes)
+    else:
+        # fallback joke so the app still runs if randomJokes.txt is missing
+        current_joke = ("Why did Matthew cross the road?", "To grab snacks from the other aisle!")
+
+    state = "setup"
+    draw_scene("setup")
+    dialogue_label.config(text=current_joke[0])  # show the question first, save the punchline
+    punchline_label.config(text="")  # clear the last punchline so it doesn't spoil the new one
+    choice1_btn.config(text="umm.. why..")
+    choice2_btn.config(text="i dont wana hear it.")
+
+
