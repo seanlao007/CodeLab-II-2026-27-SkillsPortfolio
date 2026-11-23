@@ -92,3 +92,52 @@ def next_question():
     info_label.config(text=f"Question {question_num} of {total_questions}   |   Score: {score}")
     feedback_label.config(text="Type your answer and click Submit.", fg=TEXT_COLOR)
     displayProblem(num1, operation, num2)
+def submit_answer():
+    text = answer_entry.get().strip()
+    # lstrip("-") lets negative numbers like -15 pass isdigit() without int() crashing
+    if text.lstrip("-").isdigit():
+        isCorrect(int(text))
+    else:
+        feedback_label.config(text="Please enter a whole number.", fg="#B91C1C")
+
+
+def displayResults():
+    # work out the grade from the score out of 100
+    if score >= 90:
+        grade = "A+"
+    elif score >= 80:
+        grade = "A"
+    elif score >= 70:
+        grade = "B"
+    elif score >= 60:
+        grade = "C"
+    else:
+        grade = "D"
+
+    play_again = messagebox.askyesno(
+        "Quiz Results",
+        f"Final Score: {score} / 100\nGrade: {grade}\n\nWould you like to play again?"
+    )
+
+    if play_again:
+        displayMenu()
+    else:
+        root.destroy()
+
+
+def start_quiz(chosen_level):
+    global difficulty, score, question_num
+    difficulty = chosen_level
+    score = 0
+    question_num = 0
+
+    # switch from the menu frame to the quiz frame in the same window
+    menu_frame.pack_forget()
+    quiz_frame.pack(pady=18, padx=24, fill="both")
+    next_question()
+
+
+def displayMenu():
+    quiz_frame.pack_forget()
+    menu_frame.pack(pady=20, padx=24, fill="both")
+
