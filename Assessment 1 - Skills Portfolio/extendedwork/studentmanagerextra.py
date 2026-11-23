@@ -38,6 +38,14 @@ def load_students():
             students.append(student)
 
 
+def save_students():
+    # overwrite the file with the updated count and current list of students
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(f"{len(students)}\n")  # keep line 1 matching how many students are stored
+        for s in students:
+            f.write(f"{s['code']},{s['name']},{s['cw1']},{s['cw2']},{s['cw3']},{s['exam']}\n")
+
+
 def get_cw_total(s):
     return s["cw1"] + s["cw2"] + s["cw3"]  # 3 coursework marks out of 20 each -> 60 max
 
@@ -140,6 +148,132 @@ def show_lowest():
     show_text("LOWEST TOTAL SCORE\n\n" + format_student(lowest))
 
 
+def sort_records():
+    if not students:
+        show_text("No student records found.")
+        return
+
+    order = simpledialog.askstring("Sort Records", "Type 'asc' or 'desc':")
+    if not order:
+        return
+
+    order = order.strip().lower()
+    # make a new sorted copy so we don't scramble the original students list order
+    if order == "asc":
+        sorted_list = sorted(students, key=get_percentage)
+    elif order == "desc":
+        sorted_list = sorted(students, key=get_percentage, reverse=True)
+    else:
+        messagebox.showinfo("Invalid Choice", "Please type 'asc' or 'desc'.")
+        return
+
+    text = f"SORTED RECORDS ({order.upper()})\n\n"
+    total_pct = 0
+    for s in sorted_list:
+        text += format_student(s)
+        total_pct += get_percentage(s)
+
+    avg_pct = total_pct / len(sorted_list)
+    text += f"\nSUMMARY -> Total Students: {len(sorted_list)}  |  Average Percentage: {avg_pct:.1f}%"
+    show_text(text)
+
+
+def add_student():
+    # catch ValueError if they type letters for numbers, and TypeError if they hit Cancel
+    try:
+        code = int(simpledialog.askstring("Add Student", "Student code:"))
+        name = simpledialog.askstring("Add Student", "Student full name:")
+        cw1 = int(simpledialog.askstring("Add Student", "Coursework 1 (out of 20):"))
+        cw2 = int(simpledialog.askstring("Add Student", "Coursework 2 (out of 20):"))
+        cw3 = int(simpledialog.askstring("Add Student", "Coursework 3 (out of 20):"))
+        exam = int(simpledialog.askstring("Add Student", "Exam mark (out of 100):"))
+    except (ValueError, TypeError):
+        messagebox.showinfo("Invalid Input", "Please enter valid numbers and don't leave blanks.")
+        return
+
+    if not name or not name.strip():
+        return
+
+    # keep coursework marks in 0..20 and exam marks in 0..100
+    if not (0 <= cw1 <= 20 and 0 <= cw2 <= 20 and 0 <= cw3 <= 20 and 0 <= exam <= 100):
+        messagebox.showinfo("Invalid Marks", "Coursework marks must be 0-20 and exam mark must be 0-100.")
+        return
+
+    new_student = {
+        "code": code,
+        "name": name.strip(),
+        "cw1": cw1,
+        "cw2": cw2,
+        "cw3": cw3,
+        "exam": exam,
+    }
+    students.append(new_student)
+    save_students()  # write the new record straight to the text file
+    show_text("Added new student and saved to studentMarks.txt:\n\n" + format_student(new_student))
+
+
+def delete_student():
+    choice = simpledialog.askstring("Delete Student", "Enter student name or number to delete:")
+    if not choice:
+        return
+
+    found = find_student(choice)
+    if not found:
+        messagebox.showinfo("Not Found", "No matching student found.")
+        return
+
+    students.remove(found)
+    save_students()  # update the text file so the deleted student stays gone
+    show_text(f"Deleted record for {found['name']} ({found['code']}) and saved to studentMarks.txt.")
+
+
+def update_student():
+    choice = simpledialog.askstring("Update Student", "Enter student name or number to update:")
+    if not choice:
+        return
+
+    found = find_student(choice)
+    if not found:
+        messagebox.showinfo("Not Found", "No matching student found.")
+        return
+
+    field = simpledialog.askstring(
+        "Update Field",
+        "Which item do you want to update?\nType: name, code, cw1, cw2, cw3, or exam"
+    )
+    if not field:
+        return
+
+    # match the typed field name to a dict key so only that one value gets changed
+    field = field.strip().lower()
+    if field == "name":
+        new_name = simpledialog.askstring("New Name", "Enter new student name:")
+        if new_name and new_name.strip():
+            found["name"] = new_name.strip()
+        else:
+            return
+    elif field in ["code", "cw1", "cw2", "cw3", "exam"]:
+        try:
+            new_val = int(simpledialog.askstring("New Value", f"Enter new value for {field}:"))
+        except (ValueError, TypeError):
+            messagebox.showinfo("Invalid Input", "Please enter a whole number.")
+            return
+
+        # check valid mark limits before saving changes
+        if field in ["cw1", "cw2", "cw3"] and not (0 <= new_val <= 20):
+            messagebox.showinfo("Invalid Marks", "Coursework marks must be between 0 and 20.")
+            return
+        if field == "exam" and not (0 <= new_val <= 100):
+            messagebox.showinfo("Invalid Marks", "Exam mark must be between 0 and 100.")
+            return
+
+        found[field] = new_val
+    else:
+        messagebox.showinfo("Invalid Field", "Choose name, code, cw1, cw2, cw3, or exam.")
+        return
+
+    save_students()  # save the edited value back to studentMarks.txt
+    show_text("Updated student record and saved to studentMarks.txt:\n\n" + format_student(found))
 
 
 # main tkinter window setup
@@ -164,6 +298,13 @@ tk.Button(btn_row, text="2. Individual Student", bg=BTN_COLOR, fg=TEXT_COLOR, wi
 tk.Button(btn_row, text="3. Highest Score", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=show_highest).pack(side="left", padx=3)
 tk.Button(btn_row, text="4. Lowest Score", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=show_lowest).pack(side="left", padx=3)
 
+# second row of buttons for extra features (5 to 8)
+ext_row = tk.Frame(root, bg=BG_COLOR)
+ext_row.pack(pady=(2, 10))
+tk.Button(ext_row, text="5. Sort Records", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=sort_records).pack(side="left", padx=3)
+tk.Button(ext_row, text="6. Add Student", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=add_student).pack(side="left", padx=3)
+tk.Button(ext_row, text="7. Delete Student", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=delete_student).pack(side="left", padx=3)
+tk.Button(ext_row, text="8. Update Student", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=update_student).pack(side="left", padx=3)
 
 # main display box for lists, searches, high/low scores, and action messages
 output_box = tk.Text(root, width=74, height=18, font=("Consolas", 10), bg=CARD_COLOR, fg=TEXT_COLOR, padx=10, pady=10)
