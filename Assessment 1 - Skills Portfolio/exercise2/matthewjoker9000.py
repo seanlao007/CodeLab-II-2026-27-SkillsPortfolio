@@ -83,3 +83,52 @@ def tell_next_joke():
     choice2_btn.config(text="i dont wana hear it.")
 
 
+def reveal_punchline():
+    global state, current_joke
+    if not current_joke:  # fallback if reveal_punchline is ever reached without a joke set
+        current_joke = ("Why did Matthew cross the road?", "To grab snacks from the other aisle!")
+    state = "punchline"
+    draw_scene("punchline")
+    punchline_label.config(text=current_joke[1])
+    choice1_btn.config(text="wow... another one !")
+    choice2_btn.config(text="that was so bad.")
+
+
+def show_sad_scene():
+    global state
+    state = "sad"
+    draw_scene("sad")
+    dialogue_label.config(text="wahhh..!!! wahh!!!........... iM So SaD!!! :((")
+    punchline_label.config(text="")
+    choice1_btn.config(text="okay try again")
+    choice2_btn.config(text="Quit")
+
+
+def handle_choice_1():
+    # same two buttons stay on screen, so check state to decide what choice 1 does
+    if state == "intro":
+        go_to_ask()
+    elif state == "ask":
+        show_sad_scene()
+    elif state == "setup":
+        reveal_punchline()
+    elif state == "punchline":
+        tell_next_joke()
+    elif state == "sad":
+        go_to_ask()
+
+
+def handle_choice_2():
+    # same idea for choice 2 depending on where the user is in the flow
+    if state == "intro":
+        go_to_ask()
+    elif state == "ask":
+        tell_next_joke()
+    elif state == "setup":
+        show_sad_scene()
+    elif state == "punchline":
+        show_sad_scene()
+    elif state == "sad":
+        root.destroy()
+
+
