@@ -141,3 +141,37 @@ def displayMenu():
     quiz_frame.pack_forget()
     menu_frame.pack(pady=20, padx=24, fill="both")
 
+
+# --- Window setup ---
+root = tk.Tk()
+root.title("Maths Quiz")
+root.geometry("430x320")
+root.configure(bg=BG_COLOR)
+
+# starting screen where the user picks difficulty
+menu_frame = tk.Frame(root, bg=CARD_COLOR, padx=16, pady=16)
+tk.Label(menu_frame, text="DIFFICULTY LEVEL", font=("Arial", 14, "bold"), bg=CARD_COLOR, fg=TEXT_COLOR).pack(pady=(0, 10))
+# lambda waits until the button is clicked instead of running start_quiz right away
+tk.Button(menu_frame, text="1. Easy", font=("Arial", 10, "bold"), bg=EASY_COLOR, fg=TEXT_COLOR, width=18, command=lambda: start_quiz("Easy")).pack(pady=4)
+tk.Button(menu_frame, text="2. Moderate", font=("Arial", 10, "bold"), bg=MOD_COLOR, fg=TEXT_COLOR, width=18, command=lambda: start_quiz("Moderate")).pack(pady=4)
+tk.Button(menu_frame, text="3. Advanced", font=("Arial", 10, "bold"), bg=ADV_COLOR, fg=TEXT_COLOR, width=18, command=lambda: start_quiz("Advanced")).pack(pady=4)
+
+# main quiz screen
+quiz_frame = tk.Frame(root, bg=CARD_COLOR, padx=16, pady=16)
+info_label = tk.Label(quiz_frame, text="", font=("Arial", 10, "bold"), bg=CARD_COLOR, fg=TEXT_COLOR)
+info_label.pack(pady=(0, 6))
+
+problem_label = tk.Label(quiz_frame, text="", font=("Arial", 18, "bold"), bg=CARD_COLOR, fg=TEXT_COLOR)
+problem_label.pack(pady=8)
+
+answer_entry = tk.Entry(quiz_frame, font=("Arial", 12), justify="center", width=12, bg="#F8FAFC", fg=TEXT_COLOR)
+answer_entry.pack(pady=6)
+answer_entry.bind("<Return>", lambda event: submit_answer())  # let Enter submit the answer too
+
+tk.Button(quiz_frame, text="Submit", font=("Arial", 10, "bold"), bg=SUBMIT_COLOR, fg=TEXT_COLOR, width=12, command=submit_answer).pack(pady=8)
+
+feedback_label = tk.Label(quiz_frame, text="", font=("Arial", 10), bg=CARD_COLOR, fg=TEXT_COLOR)
+feedback_label.pack(pady=(4, 0))
+
+displayMenu()  # show the difficulty menu first
+root.mainloop()  # keep the window open and listen for button clicks
