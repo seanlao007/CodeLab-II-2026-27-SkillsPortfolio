@@ -132,3 +132,38 @@ def handle_choice_2():
         root.destroy()
 
 
+# --- Main Tkinter Window ---
+root = tk.Tk()
+root.title("Matthew Jokester 9000")
+root.geometry("570x490")
+root.resizable(False, False)  # keep window size fixed so button coordinates stay aligned
+root.configure(bg="#E6F7F2")
+
+# load scene images once at startup rather than reading from disk on every click
+for key in ["intro", "ask", "setup", "punchline", "sad"]:  # only load scenes actively used by the flow
+    scene_images[key] = load_scene(f"{key}.png")
+
+scene_canvas = tk.Canvas(root, width=SCENE_W, height=SCENE_H, highlightthickness=2, highlightbackground="#66C2A5")
+scene_canvas.pack(pady=(12, 8))
+
+# two choice buttons whose text updates to fit each scene
+choice1_btn = tk.Button(scene_canvas, font=("Trebuchet MS", 9, "bold"), bg="#FFFFFF", width=20, command=handle_choice_1)
+choice2_btn = tk.Button(scene_canvas, font=("Trebuchet MS", 9, "bold"), bg="#FFFFFF", width=20, command=handle_choice_2)
+
+# dialogue panel underneath the scene for Matthew's lines and punchlines
+dialogue_frame = tk.Frame(root, bg="#FFFFFF", highlightbackground="#66C2A5", highlightthickness=2, padx=14, pady=10)
+dialogue_frame.pack(padx=15, fill="x")
+
+name_label = tk.Label(dialogue_frame, text="Matthew", font=("Trebuchet MS", 9, "bold"), bg="#45B7D1", fg="#FFFFFF", padx=8, pady=1)
+name_label.pack(anchor="w", pady=(0, 4))
+
+dialogue_label = tk.Label(dialogue_frame, font=("Trebuchet MS", 11, "bold"), bg="#FFFFFF", fg="#1E2D2F", wraplength=500, justify="left", anchor="w")
+dialogue_label.pack(fill="x")
+
+punchline_label = tk.Label(dialogue_frame, font=("Trebuchet MS", 11, "italic"), bg="#FFFFFF", fg="#2B7A78", wraplength=500, justify="left", anchor="w")
+punchline_label.pack(fill="x", pady=(4, 0))
+
+tk.Button(root, text="Quit", font=("Trebuchet MS", 9, "bold"), bg="#FFE5E5", fg="#7A1C1C", padx=14, command=root.destroy).pack(pady=(8, 10))
+
+show_intro()  # open on Matthew's intro scene
+root.mainloop()  # start Tkinter's event loop so the GUI stays responsive

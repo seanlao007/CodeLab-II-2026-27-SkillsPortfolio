@@ -92,6 +92,8 @@ def next_question():
     info_label.config(text=f"Question {question_num} of {total_questions}   |   Score: {score}")
     feedback_label.config(text="Type your answer and click Submit.", fg=TEXT_COLOR)
     displayProblem(num1, operation, num2)
+
+
 def submit_answer():
     text = answer_entry.get().strip()
     # lstrip("-") lets negative numbers like -15 pass isdigit() without int() crashing
