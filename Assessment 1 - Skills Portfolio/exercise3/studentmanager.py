@@ -140,3 +140,32 @@ def show_lowest():
     show_text("LOWEST TOTAL SCORE\n\n" + format_student(lowest))
 
 
+# main tkinter window setup
+root = tk.Tk()
+root.title("Student Manager")
+root.geometry("680x460")
+root.configure(bg=BG_COLOR)
+
+tk.Label(
+    root,
+    text="Student Manager",
+    font=("Arial", 16, "bold"),
+    bg=BG_COLOR,
+    fg=TEXT_COLOR
+).pack(pady=(10, 6))
+
+# top row of buttons for core features (1 to 4)
+btn_row = tk.Frame(root, bg=BG_COLOR)
+btn_row.pack(pady=(2, 10))
+tk.Button(btn_row, text="1. View All Students", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=view_all).pack(side="left", padx=3)
+tk.Button(btn_row, text="2. Individual Student", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=view_one).pack(side="left", padx=3)
+tk.Button(btn_row, text="3. Highest Score", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=show_highest).pack(side="left", padx=3)
+tk.Button(btn_row, text="4. Lowest Score", bg=BTN_COLOR, fg=TEXT_COLOR, width=18, command=show_lowest).pack(side="left", padx=3)
+
+# main display box for lists, searches, high/low scores, and action messages
+output_box = tk.Text(root, width=74, height=18, font=("Consolas", 10), bg=CARD_COLOR, fg=TEXT_COLOR, padx=10, pady=10)
+output_box.pack(padx=16, pady=(0, 12))
+
+load_students()
+view_all()  # load the text file and show everyone right away when the app opens
+root.mainloop()  # keep the GUI running and listening for clicks
