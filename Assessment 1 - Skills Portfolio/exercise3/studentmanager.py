@@ -64,3 +64,79 @@ def get_grade(pct):
         return "F"
 
 
+def format_student(s):
+    # reuse the helper functions here so every screen shows the exact same layout
+    cw_total = get_cw_total(s)
+    pct = get_percentage(s)
+    grade = get_grade(pct)
+    return (
+        f"Name: {s['name']}  |  Number: {s['code']}\n"
+        f"Coursework Total: {cw_total}/60  |  Exam Mark: {s['exam']}/100\n"
+        f"Overall Percentage: {pct:.1f}%  |  Grade: {grade}\n"
+        f"{'-' * 45}\n"
+    )
+
+
+def show_text(message):
+    # clear old text first so clicking a button gives a fresh view instead of stacking text
+    output_box.delete("1.0", tk.END)
+    output_box.insert(tk.END, message)
+
+
+def find_student(query):
+    # lowercase + strip so typing a name in any case or matching the student number works
+    query = query.strip().lower()
+    for s in students:
+        if str(s["code"]) == query or s["name"].lower() == query:
+            return s
+    return None
+
+
+def view_all():
+    if not students:
+        show_text("No student records found.")
+        return
+
+    text = ""
+    total_pct = 0
+    for s in students:
+        text += format_student(s)
+        total_pct += get_percentage(s)
+
+    avg_pct = total_pct / len(students)
+    text += f"\nSUMMARY -> Total Students: {len(students)}  |  Average Percentage: {avg_pct:.1f}%"
+    show_text(text)
+
+
+def view_one():
+    choice = simpledialog.askstring("View Student", "Enter student name or number:")
+    if not choice:  # stop quietly if the user hits Cancel or closes the popup
+        return
+
+    found = find_student(choice)
+    if found:
+        show_text(format_student(found))
+    else:
+        messagebox.showinfo("Not Found", "No matching student found.")
+
+
+def show_highest():
+    if not students:
+        show_text("No student records found.")
+        return
+
+    # compare students by total marks out of 160 to find the top scorer
+    best = max(students, key=get_total_marks)
+    show_text("HIGHEST TOTAL SCORE\n\n" + format_student(best))
+
+
+def show_lowest():
+    if not students:
+        show_text("No student records found.")
+        return
+
+    # compare students by total marks out of 160 to find the lowest scorer
+    lowest = min(students, key=get_total_marks)
+    show_text("LOWEST TOTAL SCORE\n\n" + format_student(lowest))
+
+
