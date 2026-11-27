@@ -24,21 +24,30 @@ num2 = 0
 operation = "+"
 correct_answer = 0
 time_left = 15
-timer_id = None  # stores the scheduled after() id so we can cancel or reset it cleanly
+timer_id = None  # save after() id so I can cancel or reset the timer cleanly
 
 
 def get_random_number(min_val, max_val):
-    # inclusive on both ends so min_val and max_val can actually show up
+    # randint includes both ends so min and max values can show up
     return random.randint(min_val, max_val)
 
 
 def pick_operation():
-    return random.choice(["+", "-"])
+    return random.choice(["+", "-"])  # only plus or minus in this quiz
+
+
+def get_max_time():
+    # extra 5s per level: 15s easy, 20s moderate, 30s advanced
+    if difficulty == "Easy":
+        return 15
+    if difficulty == "Moderate":
+        return 20
+    return 30
 
 
 def stop_timer():
     global timer_id
-    # cancel any running timer so old countdowns don't overlap or speed up
+    # cancel any active countdown so old timers don't stack or run double speed
     if timer_id is not None:
         root.after_cancel(timer_id)
         timer_id = None
@@ -49,42 +58,43 @@ def tick_timer():
 
     timer_label.config(text=f"Time left: {time_left}s")
 
-    if time_left <= 0:
+    if time_left <= 0:  # countdown hit zero
         timer_id = None
         if attempt == 1:
-            # first timer ran out, so give one more shot with a fresh 15s clock
+            # reset back to this difficulty's max timer for a second try at 5 points
             attempt = 2
-            time_left = 15
-            feedback_label.config(text="Time's up on try 1! Last chance (5 pts).", fg="#B45309")
+            time_left = get_max_time()
+            feedback_label.config(text=f"Time's up on try 1! Last chance ({time_left}s, 5 pts).", fg="#B45309")
             answer_entry.delete(0, tk.END)
             tick_timer()
         else:
+            # out of time on the second try too, so move on
             messagebox.showinfo("Time's Up!", f"Out of time! Answer was {correct_answer}.")
             next_question()
         return
 
     time_left -= 1
-    timer_id = root.after(1000, tick_timer)  # runs tick_timer again after 1s without freezing the UI
+    timer_id = root.after(1000, tick_timer)  # schedule next tick in 1s without blocking UI
 
 
 def check_answer(user_ans):
     global score, attempt
 
-    stop_timer()
+    stop_timer()  # pause countdown while checking the answer
 
     if user_ans == correct_answer:
         if attempt == 1:
-            score += 10
+            score += 10  # full points on first try
             messagebox.showinfo("Nice!", "Right on the 1st try! +10 pts")
         else:
-            score += 5
+            score += 5  # half points on second try
             messagebox.showinfo("Clutch!", "Got it on the 2nd try! +5 pts")
         next_question()
     else:
         if attempt == 1:
-            # give a second try for half points and restart the timer
+            # wrong on first try, so restart this level's timer for one last shot at 5 points
             attempt = 2
-            time_left = 15
+            time_left = get_max_time()
             feedback_label.config(text="Nope, try again! (5 pts)", fg="#B45309")
             answer_entry.delete(0, tk.END)
             answer_entry.focus_set()
@@ -97,7 +107,7 @@ def check_answer(user_ans):
 def show_problem(first_num, op, second_num):
     problem_label.config(text=f"{first_num} {op} {second_num} =")
     answer_entry.delete(0, tk.END)
-    answer_entry.focus_set()  # put cursor straight in the box so typing is instant
+    answer_entry.focus_set()  # focus input box so I can type right away
 
 
 def next_question():
@@ -105,15 +115,15 @@ def next_question():
 
     stop_timer()
 
-    if question_num >= total_questions:
+    if question_num >= total_questions:  # finished all 10 questions
         show_results()
         return
 
     question_num += 1
-    attempt = 1
-    time_left = 15
+    attempt = 1  # reset back to first attempt for the new question
+    time_left = get_max_time()  # use max timer for current difficulty
 
-    # number ranges based on the difficulty picked on the menu
+    # pick number range based on chosen difficulty
     if difficulty == "Easy":
         low, high = 1, 9
     elif difficulty == "Moderate":
@@ -128,18 +138,18 @@ def next_question():
     if operation == "+":
         correct_answer = num1 + num2
     else:
-        # subtraction can produce negative answers in higher levels
+        # allow negative results when subtracting
         correct_answer = num1 - num2
 
     info_label.config(text=f"Q {question_num}/{total_questions}  |  Score: {score}")
     feedback_label.config(text="Type your answer and hit Enter or Submit.", fg=TEXT_COLOR)
     show_problem(num1, operation, num2)
-    tick_timer()  # start the 15s countdown for this question
+    tick_timer()  # start timer for this question
 
 
 def submit_answer():
     text = answer_entry.get().strip()
-    # lstrip("-") lets negative answers like -12 pass isdigit() before int()
+    # strip a leading minus sign so negative numbers pass isdigit()
     if text.lstrip("-").isdigit():
         check_answer(int(text))
     else:
@@ -149,6 +159,7 @@ def submit_answer():
 def show_results():
     stop_timer()
 
+    # grade boundaries out of 100 max points
     if score >= 90:
         grade = "A+"
     elif score >= 80:
@@ -166,44 +177,47 @@ def show_results():
     )
 
     if play_again:
-        show_menu()
+        show_menu()  # go back to difficulty menu for another round
     else:
         root.destroy()
 
 
 def start_quiz(chosen_level):
     global difficulty, score, question_num
+    # reset round stats before starting
     difficulty = chosen_level
     score = 0
     question_num = 0
 
-    # swap menu frame for quiz frame inside the same window
+    # switch from menu frame to quiz frame in the same window
     menu_frame.pack_forget()
     quiz_frame.pack(pady=18, padx=22, fill="both", expand=True)
     next_question()
 
 
 def show_menu():
-    stop_timer()
+    stop_timer()  # stop clock if going back to menu mid-round
     quiz_frame.pack_forget()
     menu_frame.pack(pady=20, padx=22, fill="both", expand=True)
 
 
-# --- Main Tkinter Window ---
+# main window setup
 root = tk.Tk()
 root.title("Maths Quiz")
 root.geometry("430x340")
 root.configure(bg=BG_COLOR)
 
+# menu screen for picking difficulty
 menu_frame = tk.Frame(root, bg=CARD_COLOR, padx=16, pady=16)
 tk.Label(menu_frame, text="MATHS QUIZ", font=(TITLE_FONT, 17, "bold"), bg=CARD_COLOR, fg=TEXT_COLOR).pack(pady=(0, 4))
-tk.Label(menu_frame, text="10 questions • 15s timer • +10 / +5 pts", font=(UI_FONT, 9), bg=CARD_COLOR, fg="#64748B").pack(pady=(0, 12))
+tk.Label(menu_frame, text="10 questions • Easy 15s / Mod 20s / Adv 30s • +10 / +5 pts", font=(UI_FONT, 9), bg=CARD_COLOR, fg="#64748B").pack(pady=(0, 12))
 
-# lambda waits until click instead of calling start_quiz right away
+# lambda delays start_quiz until the button is actually clicked
 tk.Button(menu_frame, text="1. Easy", font=(UI_FONT, 10, "bold"), bg=EASY_COLOR, fg=TEXT_COLOR, width=18, command=lambda: start_quiz("Easy")).pack(pady=4)
 tk.Button(menu_frame, text="2. Moderate", font=(UI_FONT, 10, "bold"), bg=MOD_COLOR, fg=TEXT_COLOR, width=18, command=lambda: start_quiz("Moderate")).pack(pady=4)
 tk.Button(menu_frame, text="3. Advanced", font=(UI_FONT, 10, "bold"), bg=ADV_COLOR, fg=TEXT_COLOR, width=18, command=lambda: start_quiz("Advanced")).pack(pady=4)
 
+# quiz screen where questions, timer, and input live
 quiz_frame = tk.Frame(root, bg=CARD_COLOR, padx=16, pady=16)
 
 top_row = tk.Frame(quiz_frame, bg=CARD_COLOR)
@@ -218,7 +232,7 @@ problem_label.pack(pady=8)
 
 answer_entry = tk.Entry(quiz_frame, font=(NUM_FONT, 12, "bold"), justify="center", width=12, bg="#F8FAFC", fg=TEXT_COLOR)
 answer_entry.pack(pady=6)
-answer_entry.bind("<Return>", lambda event: submit_answer())  # let Enter submit too
+answer_entry.bind("<Return>", lambda event: submit_answer())  # submit when pressing Enter
 
 btn_row = tk.Frame(quiz_frame, bg=CARD_COLOR)
 btn_row.pack(pady=8)
@@ -229,4 +243,4 @@ feedback_label = tk.Label(quiz_frame, text="", font=(UI_FONT, 9), bg=CARD_COLOR,
 feedback_label.pack(pady=(4, 0))
 
 show_menu()  # start on the difficulty menu
-root.mainloop()  # keep the Tkinter window running
+root.mainloop()  # keep the app window open
