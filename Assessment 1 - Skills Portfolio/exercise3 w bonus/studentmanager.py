@@ -1,64 +1,68 @@
-import os  # builds file paths relative to this script's folder instead of hardcoding paths
+import os  # using os so the file path still works if I run from another folder
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 
 BG_COLOR = "#B8F2F4"
-CARD_COLOR = "#FFFFFF"
+BAR_COLOR = "#E0FBFB"
+BOX_COLOR = "#FFFFFF"
 TEXT_COLOR = "#0F172A"
 BTN_COLOR = "#5EEAD4"
+TAB_IDLE = "#CCFBF1"
+TAB_ACTIVE = "#2DD4BF"
 HIDE_BTN_COLOR = "#FCA5A5"
 
-# points to resources/studentMarks.txt right next to this script
+# getting the path to resources/studentMarks.txt relative to this script
 base_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(base_dir, "resources", "studentMarks.txt")
 
-students = []  # stores each student as a dict so I can use named keys instead of index numbers
+students = []  # keeping each student as a dict so I can use names like s["exam"]
 
 
 def load_students():
-    students.clear()  # wipe old entries first so reloading doesn't duplicate records
-    if not os.path.exists(file_path):
-        messagebox.showwarning("Missing File", f"Could not find {file_path}.")
+    students.clear()  # wipe the list first so reloading doesn't stack duplicates
+    if not os.path.exists(file_path):  # warn instead of crashing if file isn't there
+        messagebox.showwarning("File Missing", f"Can't find {file_path}.")
         return
 
     with open(file_path, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
 
-    # line 0 is the student count, so start from index 1 for actual student rows
+    # line 0 is the total count, so I start at index 1 for actual student rows
     for line in lines[1:]:
         parts = line.split(",")
-        if len(parts) != 6:
+        if len(parts) != 6:  # make sure row has all 6 fields before parsing
             continue
         try:
-            students.append({
+            student = {
                 "code": int(parts[0].strip()),
                 "name": parts[1].strip(),
                 "cw1": int(parts[2].strip()),
                 "cw2": int(parts[3].strip()),
                 "cw3": int(parts[4].strip()),
                 "exam": int(parts[5].strip()),
-            })
+            }
+            students.append(student)
         except ValueError:
-            continue  # skip broken or non-numeric rows instead of crashing startup
+            continue  # skip bad lines instead of crashing when the app starts
 
     refresh_count()
 
 
 def save_students():
-    # write the updated count on line 1, followed by each student row
+    # put the student count on the first line, then write each student below it
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(f"{len(students)}\n")
         for s in students:
             f.write(f"{s['code']},{s['name']},{s['cw1']},{s['cw2']},{s['cw3']},{s['exam']}\n")
-    refresh_count()
+    refresh_count()  # keep the sidebar count synced after saving
 
 
 def refresh_count():
-    count_label.config(text=f"Students: {len(students)}")
+    count_label.config(text=f"Total: {len(students)}")
 
 
 def cw_total(s):
-    return s["cw1"] + s["cw2"] + s["cw3"]  # 3 coursework marks out of 20 each = 60 max
+    return s["cw1"] + s["cw2"] + s["cw3"]  # three coursework pieces out of 20 = 60
 
 
 def total_marks(s):
@@ -66,11 +70,11 @@ def total_marks(s):
 
 
 def percentage(s):
-    return (total_marks(s) / 160) * 100
+    return (total_marks(s) / 160) * 100  # turn total out of 160 into a percentage
 
 
 def grade_for(pct):
-    # standard grade boundaries out of 100%
+    # checking from highest boundary down so it hits the right grade
     if pct >= 70:
         return "A"
     if pct >= 60:
@@ -83,7 +87,7 @@ def grade_for(pct):
 
 
 def format_student(s):
-    # keep every student card formatted the same way across views
+    # keeping one format function so every view prints students the same way
     pct = percentage(s)
     return (
         f"Name: {s['name']}  |  ID: {s['code']}\n"
@@ -94,146 +98,152 @@ def format_student(s):
 
 
 def show_output(text):
-    # clear old output before writing new text so views don't stack
+    # clearing old output first so new results don't get stuck below old ones
     output_box.delete("1.0", tk.END)
     output_box.insert(tk.END, text)
 
 
-def show_privacy_screen():
-    # hide student marks on startup and on demand so sensitive data isn't left exposed
-    show_output(
-        "RECORDS HIDDEN FOR PRIVACY\n"
-        "----------------------------------------------\n"
-        "Click an option above to view or manage records."
-    )
-
-
-def has_records():
-    if students:
-        return True
-    show_output("No student records available.")
-    return False
+def hide_records():
+    # hiding marks at startup and on Hide so data isn't just sitting on screen
+    show_output("Marks hidden.\n\nPick a section on the left to view or edit records.")
 
 
 def find_student(query):
-    # lowercase + strip so searching by name or ID works regardless of casing or spaces
-    clean = query.strip().lower()
+    clean = query.strip().lower()  # lowercasing and trimming so search is forgiving
     for s in students:
         if str(s["code"]) == clean or s["name"].lower() == clean:
             return s
-    return None
+    return None  # return None if no match so caller can show a message
 
 
 def duplicate_code(code, ignore_student=None):
-    # ignore_student lets an existing student keep their own ID when updating other fields
+    # ignoring the current student when updating so they can keep their own ID
     for s in students:
         if s is not ignore_student and s["code"] == code:
             return True
     return False
 
 
-def valid_marks(cw1, cw2, cw3, exam):
-    return (
-        0 <= cw1 <= 20
-        and 0 <= cw2 <= 20
-        and 0 <= cw3 <= 20
-        and 0 <= exam <= 100
-    )
+def open_tab(tab_name):
+    # hiding all three bars first, then showing whichever tab I picked
+    views_bar.pack_forget()
+    records_bar.pack_forget()
+    tools_bar.pack_forget()
 
+    tab_views_btn.config(bg=TAB_IDLE)
+    tab_records_btn.config(bg=TAB_IDLE)
+    tab_tools_btn.config(bg=TAB_IDLE)
 
-def ask_int(title, prompt):
-    # return None if the user cancels or enters non-numeric text
-    raw = simpledialog.askstring(title, prompt)
-    if raw is None:
-        return None
-    try:
-        return int(raw.strip())
-    except ValueError:
-        messagebox.showinfo("Invalid Input", "Please enter a whole number.")
-        return None
+    # show matching action bar and highlight that tab button
+    if tab_name == "views":
+        views_bar.pack(fill="x", pady=(0, 8))
+        tab_views_btn.config(bg=TAB_ACTIVE)
+    elif tab_name == "records":
+        records_bar.pack(fill="x", pady=(0, 8))
+        tab_records_btn.config(bg=TAB_ACTIVE)
+    elif tab_name == "tools":
+        tools_bar.pack(fill="x", pady=(0, 8))
+        tab_tools_btn.config(bg=TAB_ACTIVE)
 
 
 def view_all():
-    if not has_records():
+    if not students:  # stop early if there are no records loaded
+        show_output("No students in list yet.")
         return
 
-    body = "".join(format_student(s) for s in students)
-    avg = sum(percentage(s) for s in students) / len(students)
-    show_output(f"{body}\nStudents: {len(students)}  |  Class Average: {avg:.1f}%")
+    # loop through everyone to build the text and add up percentages for the average
+    body = ""
+    pct_sum = 0
+    for s in students:
+        body += format_student(s)
+        pct_sum += percentage(s)
+
+    avg = pct_sum / len(students)
+    show_output(f"{body}\n{len(students)} students  |  Average: {avg:.1f}%")
 
 
 def view_one():
-    if not has_records():
+    if not students:
+        show_output("No students in list yet.")
         return
 
-    query = simpledialog.askstring("Individual Student", "Enter student name or ID:")
+    query = simpledialog.askstring("Find Student", "Name or ID:")
     if not query:
-        return
+        return  # user cancelled or left it blank
 
     found = find_student(query)
     if found:
         show_output(format_student(found))
     else:
-        messagebox.showinfo("Not Found", "No matching student found.")
+        messagebox.showinfo("Not Found", "Couldn't find that student.")
 
 
 def show_highest():
-    if not has_records():
+    if not students:
+        show_output("No students in list yet.")
         return
-    top = max(students, key=total_marks)  # pick highest total marks out of 160
-    show_output("HIGHEST SCORE\n\n" + format_student(top))
+
+    top = max(students, key=total_marks)  # compare by total marks out of 160
+    show_output("Top Score\n\n" + format_student(top))
 
 
 def show_lowest():
-    if not has_records():
+    if not students:
+        show_output("No students in list yet.")
         return
-    low = min(students, key=total_marks)  # pick lowest total marks out of 160
-    show_output("LOWEST SCORE\n\n" + format_student(low))
+
+    low = min(students, key=total_marks)  # compare by total marks out of 160
+    show_output("Lowest Score\n\n" + format_student(low))
 
 
 def sort_students():
-    if not has_records():
+    if not students:
+        show_output("No students in list yet.")
         return
 
-    direction = simpledialog.askstring("Sort Records", "Sort order ('asc' or 'desc'):")
+    direction = simpledialog.askstring("Sort", "Type 'asc' or 'desc':")
     if not direction:
-        return
+        return  # stop if cancelled or empty
 
     direction = direction.strip().lower()
-    # create a new sorted list so the main students list order isn't changed unexpectedly
+    # sorted() returns a new list so I don't mess up the loaded order in students
     if direction == "asc":
         ordered = sorted(students, key=percentage)
     elif direction == "desc":
         ordered = sorted(students, key=percentage, reverse=True)
     else:
-        messagebox.showinfo("Invalid Choice", "Please enter 'asc' or 'desc'.")
+        messagebox.showinfo("Check Input", "Type 'asc' or 'desc'.")
         return
 
-    body = "".join(format_student(s) for s in ordered)
-    show_output(f"SORTED BY PERCENTAGE ({direction.upper()})\n\n{body}")
+    body = ""
+    for s in ordered:
+        body += format_student(s)
+    show_output(f"Sorted ({direction})\n\n{body}")
 
 
 def add_student():
-    code = ask_int("Add Student", "Student ID:")
-    if code is None:
-        return
-    if duplicate_code(code):  # prevent two students from sharing the same ID
-        messagebox.showinfo("Duplicate ID", f"Student ID {code} is already in use.")
-        return
-
-    name = simpledialog.askstring("Add Student", "Student full name:")
-    if not name or not name.strip():
-        return
-
-    cw1 = ask_int("Add Student", "Coursework 1 (0-20):")
-    cw2 = ask_int("Add Student", "Coursework 2 (0-20):")
-    cw3 = ask_int("Add Student", "Coursework 3 (0-20):")
-    exam = ask_int("Add Student", "Exam mark (0-100):")
-    if None in (cw1, cw2, cw3, exam):
+    # catch non-numbers or cancelled popups before trying int()
+    try:
+        code = int(simpledialog.askstring("Add Student", "Student ID:"))
+        name = simpledialog.askstring("Add Student", "Full name:")
+        cw1 = int(simpledialog.askstring("Add Student", "Coursework 1 (0-20):"))
+        cw2 = int(simpledialog.askstring("Add Student", "Coursework 2 (0-20):"))
+        cw3 = int(simpledialog.askstring("Add Student", "Coursework 3 (0-20):"))
+        exam = int(simpledialog.askstring("Add Student", "Exam mark (0-100):"))
+    except (ValueError, TypeError):
+        messagebox.showinfo("Check Input", "Enter whole numbers for ID and marks.")
         return
 
-    if not valid_marks(cw1, cw2, cw3, exam):
-        messagebox.showinfo("Invalid Marks", "Coursework must be 0-20 and exam must be 0-100.")
+    if not name or not name.strip():  # bail out if name is blank
+        return
+
+    if duplicate_code(code):  # don't let two students share an ID
+        messagebox.showinfo("ID Taken", f"ID {code} is already used.")
+        return
+
+    # keep coursework in 0-20 and exam in 0-100
+    if not (0 <= cw1 <= 20 and 0 <= cw2 <= 20 and 0 <= cw3 <= 20 and 0 <= exam <= 100):
+        messagebox.showinfo("Check Marks", "Coursework must be 0-20 and exam must be 0-100.")
         return
 
     new_record = {
@@ -245,88 +255,97 @@ def add_student():
         "exam": exam,
     }
     students.append(new_record)
-    save_students()  # save straight to studentMarks.txt so new data persists
-    show_output("Student added and saved:\n\n" + format_student(new_record))
+    save_students()  # write straight to the file so changes aren't lost
+    show_output("Saved new student:\n\n" + format_student(new_record))
 
 
 def delete_student():
-    if not has_records():
+    if not students:
+        show_output("No students in list yet.")
         return
 
-    query = simpledialog.askstring("Delete Student", "Enter student name or ID to delete:")
+    query = simpledialog.askstring("Delete Student", "Name or ID to remove:")
     if not query:
-        return
+        return  # stop if cancelled or empty
 
     found = find_student(query)
     if not found:
-        messagebox.showinfo("Not Found", "No matching student found.")
+        messagebox.showinfo("Not Found", "Couldn't find that student.")
         return
 
-    # ask before deleting so a mistyped ID or accidental click doesn't wipe a record
-    ok = messagebox.askyesno(
-        "Confirm Delete",
-        f"Delete {found['name']} (ID: {found['code']})?"
-    )
+    # pop up a yes/no check first so I don't delete someone by mistake
+    ok = messagebox.askyesno("Delete?", f"Remove {found['name']} ({found['code']})?")
     if not ok:
         return
 
     students.remove(found)
-    save_students()
-    show_output(f"Removed {found['name']} ({found['code']}) and updated studentMarks.txt.")
+    save_students()  # update the file after removing the record
+    show_output(f"Removed {found['name']} ({found['code']}).")
 
 
 def update_student():
-    if not has_records():
+    if not students:
+        show_output("No students in list yet.")
         return
 
-    query = simpledialog.askstring("Update Student", "Enter student name or ID to update:")
+    query = simpledialog.askstring("Update Student", "Name or ID to edit:")
     if not query:
-        return
+        return  # stop if cancelled or empty
 
     found = find_student(query)
     if not found:
-        messagebox.showinfo("Not Found", "No matching student found.")
+        messagebox.showinfo("Not Found", "Couldn't find that student.")
         return
 
     field = simpledialog.askstring(
-        "Update Field",
-        "Field to update (name, code, cw1, cw2, cw3, exam):"
+        "Edit Field",
+        "Which field? (name, code, cw1, cw2, cw3, exam)"
     )
     if not field:
         return
 
     field = field.strip().lower()
+    # handle text name separately from numeric ID and marks
     if field == "name":
-        new_name = simpledialog.askstring("Update Name", "Enter new name:")
+        new_name = simpledialog.askstring("Edit Name", "New name:")
         if not new_name or not new_name.strip():
             return
         found["name"] = new_name.strip()
     elif field in ("code", "cw1", "cw2", "cw3", "exam"):
-        new_num = ask_int("Update Value", f"New value for {field}:")
-        if new_num is None:
+        raw_num = simpledialog.askstring("Edit Value", f"New {field}:")
+        if raw_num is None:  # user hit Cancel
             return
+        try:
+            new_num = int(raw_num.strip())
+        except ValueError:
+            messagebox.showinfo("Check Input", "Enter a whole number.")
+            return
+
+        # check rules for whichever field I'm changing
         if field == "code" and duplicate_code(new_num, ignore_student=found):
-            messagebox.showinfo("Duplicate ID", f"Student ID {new_num} is already in use.")
+            messagebox.showinfo("ID Taken", f"ID {new_num} is already used.")
             return
         if field in ("cw1", "cw2", "cw3") and not (0 <= new_num <= 20):
-            messagebox.showinfo("Invalid Mark", "Coursework must be between 0 and 20.")
+            messagebox.showinfo("Check Mark", "Coursework must be between 0 and 20.")
             return
         if field == "exam" and not (0 <= new_num <= 100):
-            messagebox.showinfo("Invalid Mark", "Exam mark must be between 0 and 100.")
+            messagebox.showinfo("Check Mark", "Exam mark must be between 0 and 100.")
             return
         found[field] = new_num
     else:
-        messagebox.showinfo("Invalid Field", "Use name, code, cw1, cw2, cw3, or exam.")
+        messagebox.showinfo("Unknown Field", "Use name, code, cw1, cw2, cw3, or exam.")
         return
 
-    save_students()
-    show_output("Student updated and saved:\n\n" + format_student(found))
+    save_students()  # save updated value back to studentMarks.txt
+    show_output("Updated:\n\n" + format_student(found))
 
 
 def grade_summary():
-    if not has_records():
+    if not students:
+        show_output("No students in list yet.")
         return
 
+    # tally each grade and count passes (40% or higher)
     grades = {"A": 0, "B": 0, "C": 0, "D": 0, "F": 0}
     passes = 0
     for s in students:
@@ -337,138 +356,162 @@ def grade_summary():
 
     pass_pct = (passes / len(students)) * 100
     summary = (
-        "GRADE BREAKDOWN\n"
+        "Grade Counts\n"
         f"{'-' * 46}\n"
         f"A (70%+): {grades['A']}   |   B (60-69%): {grades['B']}   |   C (50-59%): {grades['C']}\n"
         f"D (40-49%): {grades['D']}   |   F (<40%): {grades['F']}\n"
         f"{'-' * 46}\n"
-        f"Passed (>=40%): {passes}/{len(students)} ({pass_pct:.1f}%)"
+        f"Pass (>=40%): {passes}/{len(students)} ({pass_pct:.1f}%)"
     )
     show_output(summary)
 
 
 def filter_grade():
-    if not has_records():
+    if not students:
+        show_output("No students in list yet.")
         return
 
-    target = simpledialog.askstring("Filter by Grade", "Enter grade (A, B, C, D, or F):")
+    target = simpledialog.askstring("Filter Grade", "Grade (A, B, C, D, or F):")
     if not target:
-        return
+        return  # stop if cancelled or empty
 
     target = target.strip().upper()
-    if target not in ("A", "B", "C", "D", "F"):
-        messagebox.showinfo("Invalid Grade", "Please enter A, B, C, D, or F.")
+    if target not in ("A", "B", "C", "D", "F"):  # reject anything outside valid letter grades
+        messagebox.showinfo("Check Grade", "Enter A, B, C, D, or F.")
         return
 
-    matches = [s for s in students if grade_for(percentage(s)) == target]
+    # collect only students whose grade matches what was typed
+    matches = []
+    for s in students:
+        if grade_for(percentage(s)) == target:
+            matches.append(s)
+
     if not matches:
-        show_output(f"No students have Grade {target}.")
+        show_output(f"No students with grade {target}.")
         return
 
-    body = "".join(format_student(s) for s in matches)
-    show_output(f"GRADE {target} STUDENTS ({len(matches)}/{len(students)})\n\n{body}")
+    body = ""
+    for s in matches:
+        body += format_student(s)
+    show_output(f"Grade {target} ({len(matches)}/{len(students)})\n\n{body}")
 
 
 def view_raw_file():
-    # show the raw text file contents directly without modifying loaded records
+    # reading the raw file directly just to check what's saved on disk
     if not os.path.exists(file_path):
-        messagebox.showwarning("Missing File", f"Could not find {file_path}.")
+        messagebox.showwarning("File Missing", f"Can't find {file_path}.")
         return
 
     with open(file_path, "r", encoding="utf-8") as f:
         raw = f.read()
 
-    show_output(f"RAW FILE: studentMarks.txt\n{'-' * 46}\n{raw}")
+    show_output(f"studentMarks.txt\n{'-' * 46}\n{raw}")
 
 
-# main window setup
 root = tk.Tk()
 root.title("Student Manager")
-root.geometry("820x560")
+root.geometry("860x560")
+root.minsize(720, 460)  # keeping a min size so the top buttons don't get squished off-screen
 root.configure(bg=BG_COLOR)
 
-top_bar = tk.Frame(root, bg=BG_COLOR)
-top_bar.pack(fill="x", padx=14, pady=(12, 6))
+# left sidebar holds the title, total count, section tabs, and Hide button
+side_nav = tk.Frame(root, bg=BAR_COLOR, width=165)
+side_nav.pack(side="left", fill="y", padx=(12, 6), pady=12)
+side_nav.pack_propagate(False)  # stop frame shrinking to fit labels/buttons
 
 tk.Label(
-    top_bar,
+    side_nav,
     text="Student Manager",
-    font=("Arial", 16, "bold"),
-    bg=BG_COLOR,
+    font=("Arial", 13, "bold"),
+    bg=BAR_COLOR,
     fg=TEXT_COLOR,
-).pack(side="left")
+).pack(anchor="w", padx=10, pady=(12, 2))
+
+count_label = tk.Label(
+    side_nav,
+    text="Total: 0",
+    font=("Arial", 9, "bold"),
+    bg=BAR_COLOR,
+    fg=TEXT_COLOR,
+)
+count_label.pack(anchor="w", padx=10, pady=(0, 12))
+
+tab_views_btn = tk.Button(
+    side_nav,
+    text="Views",
+    font=("Arial", 9, "bold"),
+    bg=TAB_ACTIVE,
+    fg=TEXT_COLOR,
+    anchor="w",
+    padx=10,
+    pady=5,
+    command=lambda: open_tab("views"),
+)
+tab_views_btn.pack(fill="x", padx=10, pady=3)
+
+tab_records_btn = tk.Button(
+    side_nav,
+    text="Records",
+    font=("Arial", 9, "bold"),
+    bg=TAB_IDLE,
+    fg=TEXT_COLOR,
+    anchor="w",
+    padx=10,
+    pady=5,
+    command=lambda: open_tab("records"),
+)
+tab_records_btn.pack(fill="x", padx=10, pady=3)
+
+tab_tools_btn = tk.Button(
+    side_nav,
+    text="Grades & File",
+    font=("Arial", 9, "bold"),
+    bg=TAB_IDLE,
+    fg=TEXT_COLOR,
+    anchor="w",
+    padx=10,
+    pady=5,
+    command=lambda: open_tab("tools"),
+)
+tab_tools_btn.pack(fill="x", padx=10, pady=3)
 
 tk.Button(
-    top_bar,
-    text="Hide Records",
+    side_nav,
+    text="Hide",
     font=("Arial", 9, "bold"),
     bg=HIDE_BTN_COLOR,
     fg=TEXT_COLOR,
     padx=10,
-    pady=3,
-    command=show_privacy_screen,
-).pack(side="right")
+    pady=4,
+    command=hide_records,
+).pack(side="bottom", fill="x", padx=10, pady=(4, 12))
 
-count_label = tk.Label(
-    top_bar,
-    text="Students: 0",
-    font=("Arial", 10, "bold"),
-    bg=BG_COLOR,
-    fg=TEXT_COLOR,
-    padx=10,
-)
-count_label.pack(side="right")
+# right panel stays pinned at the top for buttons, with the text box taking the rest of the space
+main_area = tk.Frame(root, bg=BG_COLOR)
+main_area.pack(side="right", fill="both", expand=True, padx=(6, 12), pady=12)
 
-row1 = tk.Frame(root, bg=BG_COLOR)
-row1.pack(pady=3)
+views_bar = tk.Frame(main_area, bg=BAR_COLOR, padx=8, pady=8)
+tk.Button(views_bar, text="1. View All", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=11, pady=4, command=view_all).pack(side="left", padx=2)
+tk.Button(views_bar, text="2. Individual", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=11, pady=4, command=view_one).pack(side="left", padx=2)
+tk.Button(views_bar, text="3. Highest", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=11, pady=4, command=show_highest).pack(side="left", padx=2)
+tk.Button(views_bar, text="4. Lowest", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=11, pady=4, command=show_lowest).pack(side="left", padx=2)
+tk.Button(views_bar, text="5. Sort", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=11, pady=4, command=sort_students).pack(side="left", padx=2)
 
-row2 = tk.Frame(root, bg=BG_COLOR)
-row2.pack(pady=(3, 8))
+records_bar = tk.Frame(main_area, bg=BAR_COLOR, padx=8, pady=8)
+tk.Button(records_bar, text="6. Add", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=14, pady=4, command=add_student).pack(side="left", padx=4)
+tk.Button(records_bar, text="7. Delete", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=14, pady=4, command=delete_student).pack(side="left", padx=4)
+tk.Button(records_bar, text="8. Update", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=14, pady=4, command=update_student).pack(side="left", padx=4)
 
-buttons_row1 = [
-    ("1. View All", view_all),
-    ("2. Individual", view_one),
-    ("3. Highest", show_highest),
-    ("4. Lowest", show_lowest),
-    ("5. Sort", sort_students),
-]
+tools_bar = tk.Frame(main_area, bg=BAR_COLOR, padx=8, pady=8)
+tk.Button(tools_bar, text="9. Grades", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=14, pady=4, command=grade_summary).pack(side="left", padx=4)
+tk.Button(tools_bar, text="10. Filter Grade", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=14, pady=4, command=filter_grade).pack(side="left", padx=4)
+tk.Button(tools_bar, text="11. Raw File", font=("Arial", 9, "bold"), bg=BTN_COLOR, fg=TEXT_COLOR, width=14, pady=4, command=view_raw_file).pack(side="left", padx=4)
 
-buttons_row2 = [
-    ("6. Add", add_student),
-    ("7. Delete", delete_student),
-    ("8. Update", update_student),
-    ("9. Grades", grade_summary),
-    ("10. Filter Grade", filter_grade),
-    ("11. Raw File", view_raw_file),
-]
+views_bar.pack(fill="x", pady=(0, 8))  # start on Views tab so buttons are ready right away
 
-for label, cmd in buttons_row1:
-    tk.Button(
-        row1,
-        text=label,
-        font=("Arial", 9, "bold"),
-        bg=BTN_COLOR,
-        fg=TEXT_COLOR,
-        width=14,
-        pady=4,
-        command=cmd,
-    ).pack(side="left", padx=3)
-
-for label, cmd in buttons_row2:
-    tk.Button(
-        row2,
-        text=label,
-        font=("Arial", 9, "bold"),
-        bg=BTN_COLOR,
-        fg=TEXT_COLOR,
-        width=12,
-        pady=4,
-        command=cmd,
-    ).pack(side="left", padx=2)
-
-# monospace Consolas keeps '|' dividers and columns lined up cleanly in the output area
-text_frame = tk.Frame(root, bg=CARD_COLOR)
-text_frame.pack(fill="both", expand=True, padx=14, pady=(0, 14))
+# Consolas keeps the '|' dividers lined up cleanly
+text_frame = tk.Frame(main_area, bg=BOX_COLOR)
+text_frame.pack(fill="both", expand=True)
 
 scrollbar = tk.Scrollbar(text_frame)
 scrollbar.pack(side="right", fill="y")
@@ -476,7 +519,7 @@ scrollbar.pack(side="right", fill="y")
 output_box = tk.Text(
     text_frame,
     font=("Consolas", 10),
-    bg=CARD_COLOR,
+    bg=BOX_COLOR,
     fg=TEXT_COLOR,
     padx=10,
     pady=10,
@@ -485,6 +528,6 @@ output_box = tk.Text(
 output_box.pack(side="left", fill="both", expand=True)
 scrollbar.config(command=output_box.yview)
 
-load_students()
-show_privacy_screen()  # load records into memory but keep them hidden until a button is clicked
+load_students()  # load records into memory on startup
+hide_records()  # keep marks hidden until a view/edit button is clicked
 root.mainloop()
