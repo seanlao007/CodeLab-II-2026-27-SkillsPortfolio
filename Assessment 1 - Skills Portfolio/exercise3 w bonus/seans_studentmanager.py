@@ -221,31 +221,53 @@ def sort_students():
     show_output(f"Sorted ({direction})\n\n{body}")
 
 
-def add_student():
-    # catch non-numbers or cancelled popups before trying int()
+def parse_int_popup(title, prompt):
+    # return an int, None if cancelled, or False if text wasn't a valid integer
+    raw = simpledialog.askstring(title, prompt)
+    if raw is None:
+        return None
     try:
-        code = int(simpledialog.askstring("Add Student", "Student ID:"))
-        name = simpledialog.askstring("Add Student", "Full name:")
-        cw1 = int(simpledialog.askstring("Add Student", "Coursework 1 (0-20):"))
-        cw2 = int(simpledialog.askstring("Add Student", "Coursework 2 (0-20):"))
-        cw3 = int(simpledialog.askstring("Add Student", "Coursework 3 (0-20):"))
-        exam = int(simpledialog.askstring("Add Student", "Exam mark (0-100):"))
-    except (ValueError, TypeError):
-        messagebox.showinfo("Check Input", "Enter whole numbers for ID and marks.")
-        return
+        return int(raw.strip())
+    except ValueError:
+        return False
 
-    if not name or not name.strip():  # bail out if name is blank
+
+def add_student():
+    code = parse_int_popup("Add Student", "Student ID:")
+    if code is None:  # user cancelled
+        return
+    if code is False:
+        messagebox.showinfo("Check Input", "Enter a whole number for Student ID.")
         return
 
     if duplicate_code(code):  # don't let two students share an ID
         messagebox.showinfo("ID Taken", f"ID {code} is already used.")
         return
 
-    # keep coursework in 0-20 and exam in 0-100
-    if not (0 <= cw1 <= 20 and 0 <= cw2 <= 20 and 0 <= cw3 <= 20 and 0 <= exam <= 100):
-        messagebox.showinfo("Check Marks", "Coursework must be 0-20 and exam must be 0-100.")
+    name = simpledialog.askstring("Add Student", "Full name:")
+    if not name or not name.strip():  # bail out if cancelled or blank
         return
 
+    marks = []
+    prompts = [
+        ("Coursework 1 (0-20):", 0, 20),
+        ("Coursework 2 (0-20):", 0, 20),
+        ("Coursework 3 (0-20):", 0, 20),
+        ("Exam mark (0-100):", 0, 100),
+    ]
+    for prompt, low, high in prompts:
+        val = parse_int_popup("Add Student", prompt)
+        if val is None:  # stop mid-way if user hits Cancel
+            return
+        if val is False:
+            messagebox.showinfo("Check Input", "Enter whole numbers for marks.")
+            return
+        if not (low <= val <= high):
+            messagebox.showinfo("Check Marks", "Coursework must be 0-20 and exam must be 0-100.")
+            return
+        marks.append(val)
+
+    cw1, cw2, cw3, exam = marks
     new_record = {
         "code": code,
         "name": name.strip(),
@@ -312,12 +334,10 @@ def update_student():
             return
         found["name"] = new_name.strip()
     elif field in ("code", "cw1", "cw2", "cw3", "exam"):
-        raw_num = simpledialog.askstring("Edit Value", f"New {field}:")
-        if raw_num is None:  # user hit Cancel
+        new_num = parse_int_popup("Edit Value", f"New {field}:")
+        if new_num is None:  # user hit Cancel
             return
-        try:
-            new_num = int(raw_num.strip())
-        except ValueError:
+        if new_num is False:
             messagebox.showinfo("Check Input", "Enter a whole number.")
             return
 
@@ -528,6 +548,6 @@ output_box = tk.Text(
 output_box.pack(side="left", fill="both", expand=True)
 scrollbar.config(command=output_box.yview)
 
-load_students()  # load records into memory on startup
+load_students()  # load records into memory after widgets exist so count_label updates cleanly
 hide_records()  # keep marks hidden until a view/edit button is clicked
 root.mainloop()

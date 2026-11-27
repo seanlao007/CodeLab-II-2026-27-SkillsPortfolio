@@ -78,7 +78,7 @@ def tell_next_joke():
     draw_scene("setup")
     dialogue_label.config(text=current_joke[0])
     punchline_label.config(text="")  # wipe old punchline before showing a new joke
-    choice1_btn.config(text="umm.. why..")
+    choice1_btn.config(text="idk... tell me")
     choice2_btn.config(text="i dont wana hear it.")
 
 

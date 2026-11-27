@@ -37,7 +37,7 @@ def pick_operation():
 
 
 def get_max_time():
-    # extra 5s per level: 15s easy, 20s moderate, 30s advanced
+    # extra seconds per difficulty 15s easy, 20s moderate, 30s advanced
     if difficulty == "Easy":
         return 15
     if difficulty == "Moderate":
@@ -53,20 +53,28 @@ def stop_timer():
         timer_id = None
 
 
+def start_second_attempt(message):
+    global attempt, time_left
+    # switch to attempt 2 with a fresh timer for this difficulty's max time
+    attempt = 2
+    time_left = get_max_time()
+    feedback_label.config(text=message, fg="#B45309")
+    answer_entry.delete(0, tk.END)
+    answer_entry.focus_set()  # keep cursor ready so I can type right away
+    tick_timer()
+
+
 def tick_timer():
-    global time_left, timer_id, attempt
+    global time_left, timer_id
 
     timer_label.config(text=f"Time left: {time_left}s")
 
     if time_left <= 0:  # countdown hit zero
         timer_id = None
         if attempt == 1:
-            # reset back to this difficulty's max timer for a second try at 5 points
-            attempt = 2
-            time_left = get_max_time()
-            feedback_label.config(text=f"Time's up on try 1! Last chance ({time_left}s, 5 pts).", fg="#B45309")
-            answer_entry.delete(0, tk.END)
-            tick_timer()
+            # show the new attempt limit rather than 0s before resetting the clock
+            next_limit = get_max_time()
+            start_second_attempt(f"Time's up on try 1! Last chance ({next_limit}s, 5 pts).")
         else:
             # out of time on the second try too, so move on
             messagebox.showinfo("Time's Up!", f"Out of time! Answer was {correct_answer}.")
@@ -78,7 +86,7 @@ def tick_timer():
 
 
 def check_answer(user_ans):
-    global score, attempt
+    global score
 
     stop_timer()  # pause countdown while checking the answer
 
@@ -92,13 +100,7 @@ def check_answer(user_ans):
         next_question()
     else:
         if attempt == 1:
-            # wrong on first try, so restart this level's timer for one last shot at 5 points
-            attempt = 2
-            time_left = get_max_time()
-            feedback_label.config(text="Nope, try again! (5 pts)", fg="#B45309")
-            answer_entry.delete(0, tk.END)
-            answer_entry.focus_set()
-            tick_timer()
+            start_second_attempt("Nope, try again! (5 pts)")
         else:
             messagebox.showinfo("Wrong", f"No luck! The answer was {correct_answer}.")
             next_question()
@@ -149,11 +151,14 @@ def next_question():
 
 def submit_answer():
     text = answer_entry.get().strip()
-    # strip a leading minus sign so negative numbers pass isdigit()
-    if text.lstrip("-").isdigit():
-        check_answer(int(text))
-    else:
+    # int() handles negative numbers cleanly and rejects weird strings like "--5"
+    try:
+        user_ans = int(text)
+    except ValueError:
         feedback_label.config(text="Whole numbers only please!", fg="#B91C1C")
+        return
+
+    check_answer(user_ans)
 
 
 def show_results():
@@ -203,13 +208,13 @@ def show_menu():
 
 # main window setup
 root = tk.Tk()
-root.title("Maths Quiz")
+root.title("Seans Math Test")
 root.geometry("430x340")
 root.configure(bg=BG_COLOR)
 
 # menu screen for picking difficulty
 menu_frame = tk.Frame(root, bg=CARD_COLOR, padx=16, pady=16)
-tk.Label(menu_frame, text="MATHS QUIZ", font=(TITLE_FONT, 17, "bold"), bg=CARD_COLOR, fg=TEXT_COLOR).pack(pady=(0, 4))
+tk.Label(menu_frame, text="SEANS MATH TEST", font=(TITLE_FONT, 17, "bold"), bg=CARD_COLOR, fg=TEXT_COLOR).pack(pady=(0, 4))
 tk.Label(menu_frame, text="10 questions • Easy 15s / Mod 20s / Adv 30s • +10 / +5 pts", font=(UI_FONT, 9), bg=CARD_COLOR, fg="#64748B").pack(pady=(0, 12))
 
 # lambda delays start_quiz until the button is actually clicked
